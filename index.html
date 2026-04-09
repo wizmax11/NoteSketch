@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<title>notesketch</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #fdf9f0;
+    --cream2: #fff8ee;
+    --cream3: #fdf0c8;
+    --ink: #3a2a0a;
+    --ink2: #5a3e1b;
+    --ink3: #a07840;
+    --gold: #e8c97a;
+    --gold2: #c97c17;
+    --orange: #d45a2a;
+    --orange2: #b84820;
+    --line: #e0c97a;
+    --sidebar-w: 260px;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: 'Nunito', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    overflow: hidden;
+  }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--cream2);
+    border-right: 2px dashed var(--gold);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    transition: width 0.22s ease, min-width 0.22s ease;
+    position: relative;
+    z-index: 10;
+  }
+  .sidebar.collapsed { width: 0; min-width: 0; border-right: none; }
+
+  .sidebar-header {
+    padding: 18px 16px 12px;
+    border-bottom: 1.5px dashed var(--gold);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .brand {
+    font-family: 'Caveat', cursive;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--orange);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  .new-note-btn {
+    background: var(--orange);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.13s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .new-note-btn:hover { background: var(--orange2); transform: scale(1.04); }
+  .new-note-btn:active { transform: scale(0.97); }
+
+  .search-wrap {
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid #eedd99;
+    flex-shrink: 0;
+  }
+  .search-wrap input {
+    width: 100%;
+    background: #fffdf7;
+    border: 1.5px solid var(--gold);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.13s;
+  }
+  .search-wrap input:focus { border-color: var(--gold2); }
+  .search-wrap input::placeholder { color: var(--ink3); }
+
+  .notes-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 8px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold) transparent;
+  }
+
+  .note-item {
+    padding: 9px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s;
+    border: 1.5px solid transparent;
+    margin-bottom: 4px;
+    position: relative;
+  }
+  .note-item:hover { background: var(--cream3); border-color: var(--gold); }
+  .note-item.active { background: #fde68a; border-color: var(--gold2); }
+
+  .note-item-title {
+    font-family: 'Caveat', cursive;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+  .note-item-meta {
+    font-size: 11px;
+    color: var(--ink3);
+    margin-top: 2px;
+  }
+  .note-item-del {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #cc4444;
+    font-size: 14px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    line-height: 1;
+    padding: 0;
+  }
+  .note-item:hover .note-item-del { display: flex; }
+
+  .sidebar-footer {
+    padding: 10px 14px;
+    border-top: 1.5px dashed var(--gold);
+    font-size: 11px;
+    color: var(--ink3);
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* ── MAIN ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    background: var(--cream2);
+    border-bottom: 2px dashed var(--gold);
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    overflow: visible;
+  }
+
+  .toggle-sidebar {
+    background: none;
+    border: 1.5px solid var(--gold);
+    border-radius: 7px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.12s;
+    color: var(--ink2);
+  }
+  .toggle-sidebar:hover { background: var(--cream3); }
+
+  .sep { width: 1px; height: 22px; background: var(--line); flex-shrink: 0; margin: 0 2px; }
+
+  .tbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 7px;
+    border: 1.5px solid var(--gold);
+    border-radius: 7px;
+    background: #fffdf7;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink2);
+    transition: background 0.12s, border-color 0.12s, transform 0.1s;
+    user-select: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .tbtn:hover { background: var(--cream3); border-color: var(--gold2); transform: scale(1.04); }
+  .tbtn:active { transform: scale(0.97); }
+  .tbtn.active { background: #fde68a; border-color: var(--gold2); color: var(--ink); }
+
+  .color-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.12s, border-color 0.12s;
+    flex-shrink: 0;
+  }
+  .color-dot:hover { transform: scale(1.3); }
+  .color-dot.sel { border-color: #333; transform: scale(1.2); }
+
+  .label {
+    font-size: 11px;
+    color: var(--ink3);
+    font-weight: 700;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .export-wrap { position: relative; flex-shrink: 0; margin-left: 4px; }
+  .export-btn {
+    background: var(--orange);
+    color: #fff;
+    border: none;
+    border-radius: 9px;
+    padding: 6px 14px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.13s, transform 0.1s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 32px;
+  }
+  .export-btn:hover { background: var(--orange2); transform: scale(1.03); }
+  .export-btn:active { transform: scale(0.97); }
+
+  .export-drop {
+    display: none;
+    position: fixed;
+    background: #fffdf7;
+    border: 1.5px solid var(--gold);
+    border-radius: 10px;
+    z-index: 9999;
+    min-width: 160px;
+    box-shadow: 3px 4px 0 var(--gold);
+    overflow: hidden;
+  }
+  .export-drop.open { display: block; }
+  .eopt {
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink2);
+    cursor: pointer;
+    transition: background 0.1s;
+    white-space: nowrap;
+    border-bottom: 1px solid #f5e8c0;
+  }
+  .eopt:last-child { border-bottom: none; }
+  .eopt:hover { background: var(--cream3); }
+
+  /* ── EDITOR AREA ── */
+  .editor-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 48px;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold) transparent;
+  }
+
+  /* notebook lines */
+  .editor-wrap::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 31px,
+      rgba(200,160,50,0.12) 31px,
+      rgba(200,160,50,0.12) 32px
+    );
+    z-index: 0;
+  }
+
+  /* red margin line */
+  .editor-wrap::after {
+    content: '';
+    position: absolute;
+    left: 72px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(200,70,50,0.18);
+    pointer-events: none;
+  }
+
+  #noteTitle {
+    position: relative;
+    z-index: 1;
+    font-family: 'Caveat', cursive;
+    font-size: 38px;
+    font-weight: 700;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    outline: none;
+    border-bottom: 2.5px dashed var(--gold);
+    padding: 4px 0 10px;
+    width: 100%;
+    margin-bottom: 22px;
+    display: block;
+  }
+  #noteTitle::placeholder { color: rgba(160,120,64,0.5); }
+
+  #editor {
+    position: relative;
+    z-index: 1;
+    min-height: calc(100vh - 220px);
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px;
+    line-height: 2;
+    color: var(--ink);
+    background: transparent;
+    outline: none;
+  }
+
+  #editor h1 { font-family: 'Caveat', cursive; font-size: 32px; font-weight: 700; color: var(--orange); margin: 10px 0 2px; line-height: 1.3; }
+  #editor h2 { font-family: 'Caveat', cursive; font-size: 26px; font-weight: 700; color: var(--gold2); margin: 8px 0 2px; line-height: 1.3; }
+  #editor h3 { font-family: 'Caveat', cursive; font-size: 21px; font-weight: 700; color: #3a7a4a; margin: 6px 0 2px; line-height: 1.3; }
+  #editor ul { padding-left: 26px; }
+  #editor ol { padding-left: 26px; }
+  #editor li { margin: 3px 0; }
+  #editor blockquote { border-left: 4px solid var(--gold); padding-left: 14px; color: #7a5c2a; font-style: italic; margin: 8px 0; }
+  #editor mark { border-radius: 3px; padding: 0 2px; }
+  #editor code { background: #f0e8d0; border-radius: 4px; padding: 1px 5px; font-family: 'Courier New', monospace; font-size: 14px; color: #7a3a0a; }
+  #editor a { color: #1a6bbf; }
+  #editor p { margin: 0 0 2px; }
+  #editor hr { border: none; border-top: 2px dashed var(--gold); margin: 16px 0; }
+
+  /* ── STATUS ── */
+  .status {
+    height: 28px;
+    background: var(--cream2);
+    border-top: 1.5px dashed var(--gold);
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 11px;
+    color: var(--ink3);
+    flex-shrink: 0;
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 12px;
+    color: var(--ink3);
+  }
+  .empty-state .big { font-family: 'Caveat', cursive; font-size: 28px; color: var(--ink3); }
+  .empty-state .small { font-size: 14px; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 3px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .sidebar { position: absolute; height: 100vh; z-index: 50; box-shadow: 4px 0 20px rgba(0,0,0,0.1); }
+    .editor-wrap { padding: 20px 18px; }
+    .editor-wrap::after { left: 42px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="brand">notesketch</span>
+      <button class="new-note-btn" onclick="newNote()">+ New</button>
+    </div>
+    <div class="search-wrap">
+      <input type="text" id="searchInput" placeholder="Search notes..." oninput="renderList()"/>
+    </div>
+    <div class="notes-list" id="notesList"></div>
+    <div class="sidebar-footer" id="noteCount">0 notes</div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main" id="mainArea">
+
+    <!-- TOOLBAR -->
+    <div class="topbar" id="topbar">
+      <button class="toggle-sidebar" onclick="toggleSidebar()" title="Toggle sidebar">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <rect x="1" y="3" width="14" height="1.5" rx="0.75"/>
+          <rect x="1" y="7.25" width="14" height="1.5" rx="0.75"/>
+          <rect x="1" y="11.5" width="14" height="1.5" rx="0.75"/>
+        </svg>
+      </button>
+
+      <div class="sep"></div>
+
+      <button class="tbtn" data-cmd="bold" title="Bold (Ctrl+B)" onclick="fmt('bold')"><b>B</b></button>
+      <button class="tbtn" data-cmd="italic" title="Italic (Ctrl+I)" onclick="fmt('italic')" style="font-style:italic">I</button>
+      <button class="tbtn" data-cmd="underline" title="Underline (Ctrl+U)" onclick="fmt('underline')" style="text-decoration:underline">U</button>
+      <button class="tbtn" data-cmd="strikeThrough" title="Strikethrough" onclick="fmt('strikeThrough')" style="text-decoration:line-through">S</button>
+
+      <div class="sep"></div>
+
+      <button class="tbtn" data-block="h1" title="Heading 1" onclick="fmt('formatBlock','h1')">H1</button>
+      <button class="tbtn" data-block="h2" title="Heading 2" onclick="fmt('formatBlock','h2')">H2</button>
+      <button class="tbtn" data-block="h3" title="Heading 3" onclick="fmt('formatBlock','h3')">H3</button>
+
+      <div class="sep"></div>
+
+      <button class="tbtn" data-cmd="insertUnorderedList" title="Bullet list" onclick="fmt('insertUnorderedList')">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+          <circle cx="2.5" cy="4" r="1.5"/><rect x="6" y="3" width="9" height="2" rx="1"/>
+          <circle cx="2.5" cy="8.5" r="1.5"/><rect x="6" y="7.5" width="9" height="2" rx="1"/>
+          <circle cx="2.5" cy="13" r="1.5"/><rect x="6" y="12" width="9" height="2" rx="1"/>
+        </svg>
+      </button>
+      <button class="tbtn" data-cmd="insertOrderedList" title="Numbered list" onclick="fmt('insertOrderedList')">1.</button>
+      <button class="tbtn" data-block="blockquote" title="Blockquote" onclick="fmt('formatBlock','blockquote')">&ldquo;&rdquo;</button>
+      <button class="tbtn" title="Inline code" onclick="wrapCode()">&lt;/&gt;</button>
+      <button class="tbtn" title="Horizontal rule" onclick="insertHR()">&#x2014;</button>
+
+      <div class="sep"></div>
+
+      <button class="tbtn" title="Align left" onclick="fmt('justifyLeft')">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+          <rect x="0" y="1" width="14" height="2" rx="1"/>
+          <rect x="0" y="5" width="9" height="2" rx="1"/>
+          <rect x="0" y="9" width="12" height="2" rx="1"/>
+        </svg>
+      </button>
+      <button class="tbtn" title="Align center" onclick="fmt('justifyCenter')">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+          <rect x="0" y="1" width="14" height="2" rx="1"/>
+          <rect x="2.5" y="5" width="9" height="2" rx="1"/>
+          <rect x="1" y="9" width="12" height="2" rx="1"/>
+        </svg>
+      </button>
+
+      <div class="sep"></div>
+
+      <span class="label">hi:</span>
+      <div class="color-dot sel" style="background:#fde68a" data-c="#fde68a" onclick="setHL(this)" title="Yellow"></div>
+      <div class="color-dot" style="background:#bbf7d0" data-c="#bbf7d0" onclick="setHL(this)" title="Green"></div>
+      <div class="color-dot" style="background:#bfdbfe" data-c="#bfdbfe" onclick="setHL(this)" title="Blue"></div>
+      <div class="color-dot" style="background:#fecaca" data-c="#fecaca" onclick="setHL(this)" title="Pink"></div>
+      <div class="color-dot" style="background:#e9d5ff" data-c="#e9d5ff" onclick="setHL(this)" title="Purple"></div>
+      <div class="color-dot" style="background:#fed7aa" data-c="#fed7aa" onclick="setHL(this)" title="Orange"></div>
+      <button class="tbtn" onclick="applyHL()" title="Apply highlight" style="padding:0 5px; font-size:11px;">hi</button>
+
+      <div class="sep"></div>
+
+      <span class="label">fg:</span>
+      <div class="color-dot sel" style="background:#d45a2a" data-c="#d45a2a" onclick="setFG(this)" title="Orange" id="fgStrip"></div>
+      <div class="color-dot" style="background:#1a6bbf" data-c="#1a6bbf" onclick="setFG(this)" title="Blue"></div>
+      <div class="color-dot" style="background:#22863a" data-c="#22863a" onclick="setFG(this)" title="Green"></div>
+      <div class="color-dot" style="background:#9333ea" data-c="#9333ea" onclick="setFG(this)" title="Purple"></div>
+      <div class="color-dot" style="background:#dc2626" data-c="#dc2626" onclick="setFG(this)" title="Red"></div>
+      <div class="color-dot" style="background:#0891b2" data-c="#0891b2" onclick="setFG(this)" title="Cyan"></div>
+      <button class="tbtn" onclick="applyFG()" title="Apply text color" style="padding:0 5px; font-size:11px;">fg</button>
+
+      <div class="sep"></div>
+
+      <button class="tbtn" onclick="fmt('removeFormat')" title="Clear formatting" style="color:#dc2626">Clr</button>
+
+      <div class="sep"></div>
+
+      <div class="export-wrap">
+        <button class="export-btn" onclick="toggleExport()">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M6 1v7M3 5l3 4 3-4M1 10h10"/>
+          </svg>
+          Export
+        </button>
+        <div class="export-drop" id="exportDrop">
+          <div class="eopt" onclick="exportPDF()">Print / PDF</div>
+          <div class="eopt" onclick="exportHTML()">HTML file</div>
+          <div class="eopt" onclick="exportTXT()">Plain text</div>
+          <div class="eopt" onclick="exportMD()">Markdown</div>
+          <div class="eopt" onclick="exportAllJSON()">Backup all (JSON)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDITOR -->
+    <div class="editor-wrap" id="editorWrap">
+      <input id="noteTitle" type="text" placeholder="Note title..." oninput="saveCurrentNote()" spellcheck="true"/>
+      <div id="editor" contenteditable="true" spellcheck="true" oninput="onEditorInput()"></div>
+    </div>
+
+    <!-- STATUS -->
+    <div class="status">
+      <span id="wc">Words: 0</span>
+      <span id="cc">Chars: 0</span>
+      <span id="saveStatus">All saved</span>
+      <span style="margin-left:auto; opacity:0.6">notesketch — works offline</span>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let notes = [];
+let activeId = null;
+let hlColor = '#fde68a';
+let fgColor = '#d45a2a';
+let saveTimer = null;
+let sidebarOpen = true;
+
+// ── INIT ──
+(function init() {
+  try {
+    const stored = localStorage.getItem('notesketch_notes');
+    notes = stored ? JSON.parse(stored) : [];
+  } catch(e) { notes = []; }
+
+  if (!notes.length) {
+    const welcome = createNote('Welcome to notesketch', `<h2>Your sketchy note-taking space</h2><p>This app saves everything <strong>automatically in your browser</strong> — no account needed, works offline.</p><h3>What you can do:</h3><ul><li>Use the toolbar above to <strong>format text</strong></li><li>Pick <mark style="background:#fde68a">highlight colors</mark> and <span style="color:#1a6bbf">text colors</span></li><li>Add headings, bullet lists, numbered lists</li><li>Export as PDF, HTML, text, or Markdown</li><li>Create multiple notes from the sidebar</li></ul><p>Click <strong>+ New</strong> to create a new note. Happy writing!</p>`);
+    notes = [welcome];
+    persistNotes();
+  }
+
+  renderList();
+  openNote(notes[0].id);
+})();
+
+// ── NOTES CRUD ──
+function createNote(title, content) {
+  return {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+    title: title || 'Untitled',
+    content: content || '<p>Start writing...</p>',
+    created: new Date().toISOString(),
+    updated: new Date().toISOString()
+  };
+}
+
+function newNote() {
+  const n = createNote('Untitled', '<p></p>');
+  notes.unshift(n);
+  persistNotes();
+  renderList();
+  openNote(n.id);
+  setTimeout(() => document.getElementById('noteTitle').select(), 60);
+}
+
+function openNote(id) {
+  if (activeId && activeId !== id) saveCurrentNote();
+  activeId = id;
+  const n = notes.find(x => x.id === id);
+  if (!n) return;
+  document.getElementById('noteTitle').value = n.title;
+  document.getElementById('editor').innerHTML = n.content;
+  updateCount();
+  renderList();
+  document.getElementById('editor').focus();
+}
+
+function deleteNote(id, e) {
+  e.stopPropagation();
+  if (notes.length === 1) { alert('Keep at least one note!'); return; }
+  notes = notes.filter(x => x.id !== id);
+  persistNotes();
+  if (activeId === id) {
+    activeId = null;
+    openNote(notes[0].id);
+  }
+  renderList();
+}
+
+function saveCurrentNote() {
+  if (!activeId) return;
+  const n = notes.find(x => x.id === activeId);
+  if (!n) return;
+  n.title = document.getElementById('noteTitle').value || 'Untitled';
+  n.content = document.getElementById('editor').innerHTML;
+  n.updated = new Date().toISOString();
+  clearTimeout(saveTimer);
+  document.getElementById('saveStatus').textContent = 'Saving...';
+  saveTimer = setTimeout(() => {
+    persistNotes();
+    renderList();
+    document.getElementById('saveStatus').textContent = 'Saved ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }, 800);
+}
+
+function persistNotes() {
+  try { localStorage.setItem('notesketch_notes', JSON.stringify(notes)); } catch(e) {}
+}
+
+function renderList() {
+  const q = (document.getElementById('searchInput').value || '').toLowerCase();
+  const list = document.getElementById('notesList');
+  const filtered = q ? notes.filter(n => n.title.toLowerCase().includes(q) || stripHTML(n.content).toLowerCase().includes(q)) : notes;
+
+  list.innerHTML = filtered.map(n => {
+    const preview = stripHTML(n.content).slice(0, 55).trim() || '';
+    const d = new Date(n.updated);
+    const dateStr = d.toLocaleDateString([], {month:'short', day:'numeric'});
+    return `<div class="note-item${n.id === activeId ? ' active' : ''}" onclick="openNote('${n.id}')">
+      <div class="note-item-title">${esc(n.title)}</div>
+      <div class="note-item-meta">${dateStr} &middot; ${preview ? esc(preview.slice(0,40)) + (preview.length > 40 ? '...' : '') : 'Empty'}</div>
+      <button class="note-item-del" onclick="deleteNote('${n.id}', event)" title="Delete">&#x2715;</button>
+    </div>`;
+  }).join('');
+
+  document.getElementById('noteCount').textContent = notes.length + (notes.length === 1 ? ' note' : ' notes');
+}
+
+// ── EDITOR HELPERS ──
+function onEditorInput() {
+  saveCurrentNote();
+  updateCount();
+  updateToolbarState();
+}
+
+const TOGGLE_CMDS = ['bold','italic','underline','strikeThrough'];
+
+function fmt(cmd, val) {
+  document.getElementById('editor').focus();
+  if (!val && TOGGLE_CMDS.includes(cmd)) {
+    document.execCommand(cmd, false, null);
+  } else if (cmd === 'formatBlock') {
+    const current = document.queryCommandValue('formatBlock').toLowerCase().replace(/[<>]/g,'');
+    document.execCommand('formatBlock', false, current === val.toLowerCase() ? 'p' : val);
+  } else {
+    document.execCommand(cmd, false, val || null);
+  }
+  saveCurrentNote();
+  updateToolbarState();
+}
+
+const BTN_MAP = [
+  { cmd: 'bold',                sel: '[data-cmd="bold"]' },
+  { cmd: 'italic',              sel: '[data-cmd="italic"]' },
+  { cmd: 'underline',           sel: '[data-cmd="underline"]' },
+  { cmd: 'strikeThrough',       sel: '[data-cmd="strikeThrough"]' },
+  { cmd: 'insertUnorderedList', sel: '[data-cmd="insertUnorderedList"]' },
+  { cmd: 'insertOrderedList',   sel: '[data-cmd="insertOrderedList"]' },
+];
+const BLOCK_BTNS = ['h1','h2','h3','blockquote'];
+
+function updateToolbarState() {
+  BTN_MAP.forEach(({ cmd, sel }) => {
+    const el = document.querySelector(sel);
+    if (!el) return;
+    try { el.classList.toggle('active', document.queryCommandState(cmd)); } catch(e) {}
+  });
+  const block = document.queryCommandValue('formatBlock').toLowerCase().replace(/[<>]/g,'');
+  BLOCK_BTNS.forEach(tag => {
+    const el = document.querySelector('[data-block="' + tag + '"]');
+    if (el) el.classList.toggle('active', block === tag);
+  });
+}
+
+document.addEventListener('selectionchange', () => {
+  if (document.activeElement === document.getElementById('editor') || document.activeElement === document.body) {
+    updateToolbarState();
+  }
+});
+
+function wrapCode() {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  const text = range.toString();
+  if (!text) return;
+  const code = document.createElement('code');
+  code.textContent = text;
+  range.deleteContents();
+  range.insertNode(code);
+  saveCurrentNote();
+}
+
+function insertHR() {
+  document.getElementById('editor').focus();
+  document.execCommand('insertHTML', false, '<hr/><p></p>');
+  saveCurrentNote();
+}
+
+function setHL(el) {
+  document.querySelectorAll('.color-dot[data-c]').forEach(d => {
+    if (d.parentNode === el.parentNode || topbarHLGroup(d)) d.classList.remove('sel');
+  });
+  // Only remove sel from HL dots
+  document.querySelectorAll('.topbar .color-dot').forEach(d => {
+    if (d.onclick && d.onclick.toString().includes('setHL')) d.classList.remove('sel');
+  });
+  el.classList.add('sel');
+  hlColor = el.dataset.c;
+}
+
+function setFG(el) {
+  document.querySelectorAll('.topbar .color-dot').forEach(d => {
+    if (d.onclick && d.onclick.toString().includes('setFG')) d.classList.remove('sel');
+  });
+  el.classList.add('sel');
+  fgColor = el.dataset.c;
+}
+
+function topbarHLGroup(d) { return d.onclick && d.onclick.toString && d.onclick.toString().includes('setHL'); }
+
+function applyHL() {
+  document.getElementById('editor').focus();
+  document.execCommand('hiliteColor', false, hlColor);
+  saveCurrentNote();
+}
+
+function applyFG() {
+  document.getElementById('editor').focus();
+  document.execCommand('foreColor', false, fgColor);
+  saveCurrentNote();
+}
+
+function updateCount() {
+  const text = document.getElementById('editor').innerText || '';
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  document.getElementById('wc').textContent = 'Words: ' + words;
+  document.getElementById('cc').textContent = 'Chars: ' + text.replace(/\s/g,'').length;
+}
+
+// ── SIDEBAR ──
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('collapsed', !sidebarOpen);
+}
+
+// ── EXPORT ──
+function toggleExport() {
+  const drop = document.getElementById('exportDrop');
+  const btn = document.querySelector('.export-btn');
+  const rect = btn.getBoundingClientRect();
+  const dropH = 250;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  
+  if (drop.classList.contains('open')) {
+    drop.classList.remove('open');
+    return;
+  }
+
+  // position: prefer below, fall back to above
+  if (spaceBelow >= dropH) {
+    drop.style.top = (rect.bottom + 6) + 'px';
+  } else {
+    drop.style.top = (rect.top - dropH - 6) + 'px';
+  }
+  drop.style.left = Math.min(rect.left, window.innerWidth - 170) + 'px';
+  drop.classList.add('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.export-wrap')) document.getElementById('exportDrop').classList.remove('open');
+});
+
+function getActiveNote() {
+  return notes.find(x => x.id === activeId) || {};
+}
+
+function exportPDF() {
+  const n = getActiveNote();
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(n.title)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+  body{font-family:'Nunito',sans-serif;max-width:740px;margin:40px auto;padding:0 28px;font-size:16px;line-height:1.85;color:#3a2a0a;background:#fdf9f0}
+  h1{font-family:'Caveat',cursive;font-size:32px;color:#d45a2a;margin:12px 0 4px}
+  h2{font-family:'Caveat',cursive;font-size:26px;color:#c97c17;margin:10px 0 4px}
+  h3{font-family:'Caveat',cursive;font-size:21px;color:#3a7a4a;margin:8px 0 4px}
+  blockquote{border-left:4px solid #e8c97a;padding-left:14px;color:#7a5c2a;font-style:italic;margin:8px 0}
+  code{background:#f0e8d0;border-radius:4px;padding:2px 6px;font-size:14px;color:#7a3a0a}
+  ul,ol{padding-left:26px}li{margin:3px 0}
+  hr{border:none;border-top:2px dashed #e8c97a;margin:16px 0}
+  mark{border-radius:3px;padding:0 2px}
+  .nt{font-family:'Caveat',cursive;font-size:40px;font-weight:700;color:#3a2a0a;border-bottom:2.5px dashed #e8c97a;padding-bottom:10px;margin-bottom:24px}
+  @media print{body{background:#fff;margin:0;padding:28px}}
+</style></head><body>
+<div class="nt">${esc(n.title)}</div>
+${n.content || ''}
+<script>window.onload=function(){window.print()}<\/script>
+</body></html>`);
+  win.document.close();
+  closeExport();
+}
+
+function exportHTML() {
+  const n = getActiveNote();
+  const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>${esc(n.title)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+  body{font-family:'Nunito',sans-serif;max-width:740px;margin:40px auto;padding:0 28px;font-size:16px;line-height:1.85;color:#3a2a0a;background:#fdf9f0}
+  h1{font-family:'Caveat',cursive;font-size:32px;color:#d45a2a;margin:12px 0 4px}
+  h2{font-family:'Caveat',cursive;font-size:26px;color:#c97c17;margin:10px 0 4px}
+  h3{font-family:'Caveat',cursive;font-size:21px;color:#3a7a4a;margin:8px 0 4px}
+  blockquote{border-left:4px solid #e8c97a;padding-left:14px;color:#7a5c2a;font-style:italic;margin:8px 0}
+  code{background:#f0e8d0;border-radius:4px;padding:2px 6px;font-size:14px;color:#7a3a0a}
+  ul,ol{padding-left:26px}li{margin:3px 0}
+  hr{border:none;border-top:2px dashed #e8c97a;margin:16px 0}
+  mark{border-radius:3px;padding:0 2px}
+  .nt{font-family:'Caveat',cursive;font-size:40px;font-weight:700;color:#3a2a0a;border-bottom:2.5px dashed #e8c97a;padding-bottom:10px;margin-bottom:24px}
+</style></head><body>
+<div class="nt">${esc(n.title)}</div>
+${n.content || ''}
+</body></html>`;
+  dl((n.title || 'note') + '.html', html, 'text/html');
+}
+
+function exportTXT() {
+  const n = getActiveNote();
+  const tmp = document.createElement('div');
+  tmp.innerHTML = n.content || '';
+  const txt = (n.title || 'Note') + '\n' + '='.repeat((n.title||'Note').length) + '\n\n' + tmp.innerText;
+  dl((n.title || 'note') + '.txt', txt, 'text/plain');
+}
+
+function exportMD() {
+  const n = getActiveNote();
+  const tmp = document.createElement('div');
+  tmp.innerHTML = n.content || '';
+  let md = '# ' + (n.title || 'Note') + '\n\n';
+  tmp.childNodes.forEach(node => {
+    if (node.nodeType !== 1) return;
+    const tag = node.tagName.toLowerCase();
+    const t = node.innerText.trim();
+    if (!t) return;
+    if (tag === 'h1') md += '# ' + t + '\n\n';
+    else if (tag === 'h2') md += '## ' + t + '\n\n';
+    else if (tag === 'h3') md += '### ' + t + '\n\n';
+    else if (tag === 'blockquote') md += '> ' + t + '\n\n';
+    else if (tag === 'hr') md += '---\n\n';
+    else if (tag === 'ul') {
+      node.querySelectorAll('li').forEach(li => { md += '- ' + li.innerText.trim() + '\n'; });
+      md += '\n';
+    } else if (tag === 'ol') {
+      let i = 1;
+      node.querySelectorAll('li').forEach(li => { md += (i++) + '. ' + li.innerText.trim() + '\n'; });
+      md += '\n';
+    } else md += t + '\n\n';
+  });
+  dl((n.title || 'note') + '.md', md, 'text/markdown');
+}
+
+function exportAllJSON() {
+  dl('notesketch-backup-' + new Date().toISOString().slice(0,10) + '.json', JSON.stringify(notes, null, 2), 'application/json');
+}
+
+function dl(filename, content, mime) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type: mime}));
+  a.download = filename;
+  a.click();
+  closeExport();
+}
+
+function closeExport() {
+  document.getElementById('exportDrop').classList.remove('open');
+}
+
+// ── UTILS ──
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function stripHTML(h) {
+  const d = document.createElement('div');
+  d.innerHTML = h;
+  return d.innerText || '';
+}
+
+// keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+    e.preventDefault();
+    newNote();
+  }
+});
+
+// prevent accidental close
+window.addEventListener('beforeunload', () => {
+  saveCurrentNote();
+  persistNotes();
+});
+</script>
+</body>
+</html>
